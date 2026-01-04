@@ -3,18 +3,26 @@ package com.example.travellog.ui.navigation
 import kotlinx.serialization.Serializable
 
 sealed interface Route {
+    // Main bottom navigation screens
     @Serializable
-    data object Home : Route
+    data object Map : Route
 
     @Serializable
-    data object TripList : Route
+    data object Gallery : Route
 
     @Serializable
-    data class TripDetail(val tripId: String) : Route
+    data object Settings : Route
+
+    // Secondary screens (accessed from main screens)
+    @Serializable
+    data class PhotoDetail(val photoId: Long) : Route
 
     @Serializable
     data object Camera : Route
 
     @Serializable
-    data object Settings : Route
+    data class StateDetail(val stateCode: String) : Route
+
+    @Serializable
+    data class CityDetail(val stateCode: String, val cityName: String) : Route
 }
