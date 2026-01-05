@@ -21,6 +21,9 @@ sealed interface Route {
     data object Camera : Route
 
     @Serializable
+    data class AddPhotoDetails(val photoUri: String) : Route
+
+    @Serializable
     data class StateDetail(val stateCode: String) : Route
 
     @Serializable

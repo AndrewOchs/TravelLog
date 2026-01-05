@@ -52,8 +52,7 @@
             </intent-filter>
         </activity>
 
-        <!-- FileProvider for sharing images (add when needed) -->
-        <!--
+        <!-- FileProvider for camera image capture -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -63,7 +62,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-        -->
     </application>
 
 </manifest>
