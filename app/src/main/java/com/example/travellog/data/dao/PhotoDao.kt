@@ -42,7 +42,7 @@ interface PhotoDao {
     @Query("SELECT * FROM photos WHERE state_name = :stateName ORDER BY captured_date DESC")
     fun getByStateName(stateName: String): Flow<List<PhotoEntity>>
 
-    @Query("SELECT * FROM photos WHERE city_name = :cityName ORDER BY captured_date DESC")
+    @Query("SELECT * FROM photos WHERE TRIM(city_name) = :cityName ORDER BY captured_date DESC")
     fun getByCity(cityName: String): Flow<List<PhotoEntity>>
 
     @Query("SELECT * FROM photos WHERE state_code = :stateCode AND city_name = :cityName ORDER BY captured_date DESC")

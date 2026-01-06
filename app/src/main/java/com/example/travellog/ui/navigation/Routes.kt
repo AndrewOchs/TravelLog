@@ -15,7 +15,14 @@ sealed interface Route {
 
     // Secondary screens (accessed from main screens)
     @Serializable
-    data class PhotoDetail(val photoId: Long) : Route
+    data class PhotoDetail(
+        val photoId: Long,
+        val contextType: String = "all",  // "state", "city", "all"
+        val contextValue: String = ""     // stateCode or cityName depending on contextType
+    ) : Route
+
+    @Serializable
+    data class JournalEntry(val photoId: Long) : Route
 
     @Serializable
     data object Camera : Route

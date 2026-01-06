@@ -1,6 +1,9 @@
 package com.example.travellog.ui.navigation
 
 import android.net.Uri
+import android.util.Log
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -11,9 +14,15 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.example.travellog.ui.screens.AddPhotoDetailsScreen
 import com.example.travellog.ui.screens.GalleryScreen
+import com.example.travellog.ui.screens.JournalEntryScreen
 import com.example.travellog.ui.screens.MapScreen
+import com.example.travellog.ui.screens.PhotoDetailScreen
 import com.example.travellog.ui.screens.SettingsScreen
 import com.example.travellog.ui.screens.StateDetailScreen
 import com.example.travellog.ui.viewmodel.MapViewModel
@@ -53,7 +62,14 @@ fun TravelLogNavGraph(
         }
 
         composable<Route.Gallery> {
-            GalleryScreen()
+            GalleryScreen(
+                onNavigateToPhotoDetail = { photoId, contextType, contextValue ->
+                    navController.navigate(Route.PhotoDetail(photoId, contextType, contextValue))
+                },
+                onNavigateToJournalEntry = { photoId ->
+                    navController.navigate(Route.JournalEntry(photoId))
+                }
+            )
         }
 
         composable<Route.Settings> {
@@ -65,7 +81,13 @@ fun TravelLogNavGraph(
             val detail = backStackEntry.toRoute<Route.StateDetail>()
             StateDetailScreen(
                 stateCode = detail.stateCode,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToPhotoDetail = { photoId, contextType, contextValue ->
+                    navController.navigate(Route.PhotoDetail(photoId, contextType, contextValue))
+                },
+                onNavigateToJournalEntry = { photoId ->
+                    navController.navigate(Route.JournalEntry(photoId))
+                }
             )
         }
 
@@ -98,33 +120,72 @@ fun TravelLogNavGraph(
             )
         }
 
-        // Secondary screens will be added here as needed
-        /*
-        composable<Route.PhotoDetail> { backStackEntry ->
+        // Photo Detail Screen with swipe navigation - Disable all animations to prevent visual flashing
+        composable<Route.PhotoDetail>(
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None }
+        ) { backStackEntry ->
             val detail = backStackEntry.toRoute<Route.PhotoDetail>()
+            Log.d("Navigation", "Composing PhotoDetailScreen for photoId=${detail.photoId}")
             PhotoDetailScreen(
                 photoId = detail.photoId,
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-
-        composable<Route.Camera> {
-            CameraScreen(
-                onPhotoTaken = { photoId ->
-                    navController.navigate(Route.PhotoDetail(photoId))
+                contextType = detail.contextType,
+                contextValue = detail.contextValue,
+                onNavigateBack = {
+                    Log.d("Navigation", "PhotoDetail: onNavigateBack called - popBackStack")
+                    navController.popBackStack()
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateToJournalEntry = { photoId ->
+                    Log.d("Navigation", "PhotoDetail: Navigate to JournalEntry for photoId=$photoId")
+                    navController.navigate(Route.JournalEntry(photoId)) {
+                        // Single top to prevent multiple instances
+                        launchSingleTop = true
+                    }
+                }
             )
         }
 
-        composable<Route.CityDetail> { backStackEntry ->
-            val detail = backStackEntry.toRoute<Route.CityDetail>()
-            CityDetailScreen(
-                stateCode = detail.stateCode,
-                cityName = detail.cityName,
-                onNavigateBack = { navController.popBackStack() }
+        // Journal Entry Screen - Disable all animations to prevent visual flashing
+        composable<Route.JournalEntry>(
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None }
+        ) { backStackEntry ->
+            val entry = backStackEntry.toRoute<Route.JournalEntry>()
+
+            Log.d("Navigation", "Composing JournalEntryScreen for photoId=${entry.photoId}")
+            JournalEntryScreen(
+                photoId = entry.photoId,
+                onSaveComplete = {
+                    Log.d("Navigation", "JournalEntry: onSaveComplete called - delaying navigation")
+
+                    // Small delay to let compose state settle before navigation
+                    // This prevents screen flashing from recomposition timing issues
+                    // MUST use Main dispatcher - navigation requires main thread
+                    GlobalScope.launch(Dispatchers.Main) {
+                        delay(50) // 50ms delay - imperceptible to users
+
+                        Log.d("Navigation", "Delay complete - popBackStack to return to PhotoDetail")
+                        Log.d("Navigation", "Current backstack before pop: ${navController.currentBackStackEntry?.destination?.route}")
+
+                        val popped = navController.popBackStack()
+
+                        Log.d("Navigation", "PopBackStack result: $popped")
+                        Log.d("Navigation", "Current backstack after pop: ${navController.currentBackStackEntry?.destination?.route}")
+
+                        if (!popped) {
+                            Log.e("Navigation", "ERROR: PopBackStack FAILED - backstack might be empty!")
+                        }
+                    }
+                },
+                onNavigateBack = {
+                    Log.d("Navigation", "JournalEntry: onNavigateBack called - popBackStack")
+                    navController.popBackStack()
+                }
             )
         }
-        */
     }
 }

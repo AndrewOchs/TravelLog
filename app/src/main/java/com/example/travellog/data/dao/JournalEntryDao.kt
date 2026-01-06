@@ -44,4 +44,12 @@ interface JournalEntryDao {
 
     @Query("SELECT COUNT(*) FROM journal_entries")
     fun getTotalEntryCount(): Flow<Int>
+
+    /**
+     * Get all photo IDs that have journal entries.
+     * Used for efficient batch checking of journal status (avoids N+1 query problem).
+     * @return Flow emitting list of photo IDs that have at least one journal entry
+     */
+    @Query("SELECT photo_id FROM journal_entries")
+    fun getAllPhotoIdsWithJournals(): Flow<List<Long>>
 }
