@@ -3,7 +3,8 @@
     "allow": [
       "Bash(gradlew.bat assembleDebug:*)",
       "Bash(./gradlew assembleDebug:*)",
-      "Bash(.gradlew.bat assembleDebug)"
+      "Bash(.gradlew.bat assembleDebug)",
+      "Bash(gradlew.bat:*)"
     ]
   }
 }

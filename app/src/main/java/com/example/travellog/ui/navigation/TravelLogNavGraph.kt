@@ -25,6 +25,7 @@ import com.example.travellog.ui.screens.MapScreen
 import com.example.travellog.ui.screens.PhotoDetailScreen
 import com.example.travellog.ui.screens.SettingsScreen
 import com.example.travellog.ui.screens.StateDetailScreen
+import com.example.travellog.ui.screens.StatsScreen
 import com.example.travellog.ui.viewmodel.MapViewModel
 import com.example.travellog.ui.viewmodel.PhotoSaveState
 import com.example.travellog.ui.viewmodel.PhotoViewModel
@@ -68,6 +69,14 @@ fun TravelLogNavGraph(
                 },
                 onNavigateToJournalEntry = { photoId ->
                     navController.navigate(Route.JournalEntry(photoId))
+                }
+            )
+        }
+
+        composable<Route.Stats> {
+            StatsScreen(
+                onNavigateToState = { stateCode ->
+                    navController.navigate(Route.StateDetail(stateCode))
                 }
             )
         }

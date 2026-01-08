@@ -11,6 +11,9 @@ sealed interface Route {
     data object Gallery : Route
 
     @Serializable
+    data object Stats : Route
+
+    @Serializable
     data object Settings : Route
 
     // Secondary screens (accessed from main screens)

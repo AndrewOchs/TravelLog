@@ -1,6 +1,7 @@
 package com.example.travellog.ui.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
@@ -28,6 +29,11 @@ val bottomNavItems = listOf(
         route = Route.Gallery,
         icon = Icons.Default.PhotoLibrary,
         label = "Gallery"
+    ),
+    BottomNavItem(
+        route = Route.Stats,
+        icon = Icons.Default.BarChart,
+        label = "Stats"
     ),
     BottomNavItem(
         route = Route.Settings,

@@ -77,6 +77,9 @@ dependencies {
     // Kotlinx Serialization
     implementation(libs.kotlinx.serialization.json)
 
+    // DataStore for Preferences
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+
     // Coil for Image Loading
     implementation(libs.coil.compose)
 
