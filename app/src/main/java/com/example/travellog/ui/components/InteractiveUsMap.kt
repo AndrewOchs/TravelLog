@@ -187,7 +187,7 @@ fun InteractiveUsMap(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // "Select State" button
+                // "View States" button
                 Button(
                     onClick = { showStateList = true },
                     modifier = Modifier.fillMaxWidth(),
@@ -205,7 +205,7 @@ fun InteractiveUsMap(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Select\nState",
+                            text = "View\nStates",
                             style = MaterialTheme.typography.labelSmall,
                             textAlign = TextAlign.Center
                         )
@@ -289,7 +289,7 @@ fun InteractiveUsMap(
                 }
             }
 
-            // "Select State" button - bottom center
+            // "View States" button - bottom center
             Button(
                 onClick = { showStateList = true },
                 modifier = Modifier
@@ -306,7 +306,7 @@ fun InteractiveUsMap(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Select State",
+                    text = "View States with Photos",
                     style = MaterialTheme.typography.titleMedium
                 )
             }
@@ -366,7 +366,7 @@ fun InteractiveUsMap(
                 ) {
                     // Header
                     Text(
-                        text = "Select a State",
+                        text = "Your States with Photos",
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
@@ -389,11 +389,14 @@ fun InteractiveUsMap(
                     )
                 }
 
-                // Filtered state list - scrollable
-                val filteredStates = states.filter { state ->
-                    state.name.contains(searchQuery, ignoreCase = true) ||
-                    state.code.contains(searchQuery, ignoreCase = true)
-                }.sortedBy { it.name }
+                // Filtered state list - scrollable (only states with photos)
+                val filteredStates = states
+                    .filter { it.photoCount > 0 } // Only show states with photos
+                    .filter { state ->
+                        state.name.contains(searchQuery, ignoreCase = true) ||
+                        state.code.contains(searchQuery, ignoreCase = true)
+                    }
+                    .sortedByDescending { it.photoCount } // Sort by most photos first
 
                 LazyColumn(
                     modifier = Modifier
@@ -401,37 +404,67 @@ fun InteractiveUsMap(
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(filteredStates) { state ->
-                        Surface(
-                            onClick = {
-                                showStateList = false
-                                searchQuery = ""
-                                onStateClick(state)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium,
-                            color = MaterialTheme.colorScheme.surfaceVariant
-                        ) {
-                            Row(
+                    if (filteredStates.isEmpty()) {
+                        // Empty state message
+                        item {
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                    .padding(vertical = 48.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Column {
+                                Text(
+                                    text = if (searchQuery.isNotEmpty()) {
+                                        "No states found matching \"$searchQuery\""
+                                    } else {
+                                        "No states with photos yet"
+                                    },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                                if (searchQuery.isEmpty()) {
                                     Text(
-                                        text = state.name,
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                    Text(
-                                        text = state.code,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = "Start adding photos to see your progress!",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        textAlign = TextAlign.Center
                                     )
                                 }
+                            }
+                        }
+                    } else {
+                        items(filteredStates) { state ->
+                            Surface(
+                                onClick = {
+                                    showStateList = false
+                                    searchQuery = ""
+                                    onStateClick(state)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = state.name,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        Text(
+                                            text = state.code,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
 
-                                if (state.photoCount > 0) {
                                     val badgeColor = when {
                                         state.photoCount in 1..5 -> lightGreen
                                         state.photoCount in 6..15 -> mediumGreen

@@ -36,6 +36,9 @@ interface JournalEntryDao {
     @Query("SELECT * FROM journal_entries WHERE photo_id = :photoId ORDER BY created_date DESC")
     fun getByPhotoId(photoId: Long): Flow<List<JournalEntryEntity>>
 
+    @Query("SELECT * FROM journal_entries WHERE photo_id = :photoId ORDER BY created_date DESC LIMIT 1")
+    suspend fun getJournalByPhotoId(photoId: Long): JournalEntryEntity?
+
     @Query("SELECT * FROM journal_entries ORDER BY created_date DESC")
     fun getAll(): Flow<List<JournalEntryEntity>>
 

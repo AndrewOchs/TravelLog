@@ -3,6 +3,9 @@
     <!-- Cache directory for temporary camera photos -->
     <cache-path name="camera_temp" path="." />
 
+    <!-- Cache directory for exported/shared files -->
+    <cache-path name="exported_files" path="." />
+
     <!-- Files directory for saved photos -->
     <files-path name="photos" path="photos/" />
 </paths>
