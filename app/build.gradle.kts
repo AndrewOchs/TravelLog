@@ -92,6 +92,9 @@ dependencies {
     // ExifInterface for GPS data
     implementation(libs.exifinterface)
 
+    // AndroidSVG for SVG parsing and rendering
+    implementation("com.caverock:androidsvg-aar:1.4")
+
     // Accompanist Permissions
     implementation(libs.accompanist.permissions)
 

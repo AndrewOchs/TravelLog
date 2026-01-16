@@ -58,7 +58,6 @@ fun InteractiveUsMap(
     onStateClick: (UsState) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val scope = rememberCoroutineScope()
@@ -128,21 +127,17 @@ fun InteractiveUsMap(
                     .fillMaxHeight()
                     .clipToBounds() // Prevent map from panning over title
             ) {
-                // Map content
+                // Map content - SVG-based renderer with tap detection
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    MapContent(
+                    SvgUsMapRenderer(
                         states = states,
-                        context = context,
-                        lightGreen = lightGreen,
-                        mediumGreen = mediumGreen,
-                        darkGreen = darkGreen,
+                        onStateClick = onStateClick,
                         scale = scale,
                         offset = offset,
                         onScaleChange = { newScale ->
-                            // Ensure scale is always within bounds
                             scale = newScale.coerceIn(MIN_SCALE, MAX_SCALE)
                         },
                         onOffsetChange = { newOffset ->
@@ -156,7 +151,12 @@ fun InteractiveUsMap(
                                 scaleAnim.animateTo(targetScale, spring())
                                 scale = scaleAnim.value
                             }
-                        }
+                        },
+                        minScale = MIN_SCALE,
+                        maxScale = MAX_SCALE,
+                        modifier = Modifier
+                            .fillMaxWidth(0.95f)
+                            .aspectRatio(1.5f)
                     )
                 }
 
@@ -239,21 +239,17 @@ fun InteractiveUsMap(
                     .weight(1f)
                     .clipToBounds() // Prevent map from panning over title
             ) {
-                // Map content
+                // Map content - SVG-based renderer with tap detection
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    MapContent(
+                    SvgUsMapRenderer(
                         states = states,
-                        context = context,
-                        lightGreen = lightGreen,
-                        mediumGreen = mediumGreen,
-                        darkGreen = darkGreen,
+                        onStateClick = onStateClick,
                         scale = scale,
                         offset = offset,
                         onScaleChange = { newScale ->
-                            // Ensure scale is always within bounds
                             scale = newScale.coerceIn(MIN_SCALE, MAX_SCALE)
                         },
                         onOffsetChange = { newOffset ->
@@ -267,7 +263,12 @@ fun InteractiveUsMap(
                                 scaleAnim.animateTo(targetScale, spring())
                                 scale = scaleAnim.value
                             }
-                        }
+                        },
+                        minScale = MIN_SCALE,
+                        maxScale = MAX_SCALE,
+                        modifier = Modifier
+                            .fillMaxWidth(0.95f)
+                            .aspectRatio(1.5f)
                     )
                 }
 
@@ -496,110 +497,6 @@ fun InteractiveUsMap(
     }
 }
 
-/**
- * Map content with zoom and pan gestures.
- */
-@Composable
-private fun MapContent(
-    states: List<UsState>,
-    context: android.content.Context,
-    lightGreen: Color,
-    mediumGreen: Color,
-    darkGreen: Color,
-    scale: Float,
-    offset: Offset,
-    onScaleChange: (Float) -> Unit,
-    onOffsetChange: (Offset) -> Unit,
-    onDoubleTap: () -> Unit
-) {
-    // Use rememberUpdatedState to capture latest values during gesture
-    val currentScale by rememberUpdatedState(scale)
-    val currentOffset by rememberUpdatedState(offset)
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth(0.95f)
-            .aspectRatio(1.5f) // Maintain aspect ratio for map
-            .graphicsLayer(
-                scaleX = scale,
-                scaleY = scale,
-                translationX = offset.x,
-                translationY = offset.y,
-                clip = false // Allow content to overflow when panned
-            )
-            .pointerInput(Unit) {
-                // Pinch-to-zoom and drag-to-pan gestures
-                detectTransformGestures { _, pan, zoom, _ ->
-                    // Use current values from rememberUpdatedState for smooth continuous updates
-                    // Ensure scale is always within MIN_SCALE and MAX_SCALE limits
-                    val newScale = (currentScale * zoom).coerceIn(MIN_SCALE, MAX_SCALE)
-                    val newOffset = currentOffset + pan
-
-                    Log.d("MapZoom", "Zoom gesture: currentScale=$currentScale, zoom=$zoom, newScale=$newScale, min=$MIN_SCALE, max=$MAX_SCALE")
-
-                    onScaleChange(newScale)
-                    onOffsetChange(newOffset)
-                }
-            }
-            .pointerInput(Unit) {
-                // Double-tap to zoom
-                detectTapGestures(
-                    onDoubleTap = { onDoubleTap() }
-                )
-            }
-    ) {
-        // Base map layer - gray US map
-        Image(
-            painter = painterResource(id = R.drawable.us_map_base),
-            contentDescription = "US Map Base",
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
-            contentScale = ContentScale.FillWidth
-        )
-
-        // State overlay layers - colored by photo count
-        states.forEach { state ->
-            if (state.photoCount > 0) {
-                // Determine overlay color based on photo count
-                val overlayColor = when {
-                    state.photoCount in 1..5 -> lightGreen
-                    state.photoCount in 6..15 -> mediumGreen
-                    else -> darkGreen
-                }
-
-                // Check if state overlay PNG exists
-                val stateResName = "state_${state.code.lowercase()}"
-                val resId = remember(stateResName) {
-                    context.resources.getIdentifier(
-                        stateResName,
-                        "drawable",
-                        context.packageName
-                    )
-                }
-
-                if (resId != 0) {
-                    Log.d("InteractiveUsMap", "✓ Loading overlay: $stateResName → ${state.code} (${state.photoCount} photos)")
-
-                    Image(
-                        painter = painterResource(id = resId),
-                        contentDescription = "${state.name} overlay",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .wrapContentHeight(),
-                        contentScale = ContentScale.FillWidth,
-                        colorFilter = ColorFilter.tint(
-                            color = overlayColor,
-                            blendMode = BlendMode.Modulate
-                        )
-                    )
-                } else {
-                    Log.w("InteractiveUsMap", "✗ Overlay NOT FOUND: $stateResName (expected for ${state.code})")
-                }
-            }
-        }
-    }
-}
 
 /**
  * Legend item showing color and label (horizontal).
