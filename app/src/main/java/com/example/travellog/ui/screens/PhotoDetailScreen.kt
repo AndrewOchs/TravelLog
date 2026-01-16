@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -28,13 +29,19 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.travellog.ui.viewmodel.PhotoDetailViewModel
+import com.example.travellog.ui.viewmodel.ExportViewModel
+import com.example.travellog.ui.viewmodel.ExportState
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import android.content.Intent
+import android.net.Uri
 
 /**
  * Full-screen photo detail screen with swipe navigation and bottom sheet.
@@ -60,9 +67,13 @@ fun PhotoDetailScreen(
     Log.d("DIAGNOSTIC", "PhotoDetailScreen COMPOSING - Thread: ${Thread.currentThread().name}")
 
     val viewModel: PhotoDetailViewModel = hiltViewModel()
+    val exportViewModel: ExportViewModel = hiltViewModel()
+    val context = LocalContext.current
+
     val currentPhoto by viewModel.currentPhoto.collectAsState()
     val currentJournal by viewModel.currentJournal.collectAsState()
     val photoList by viewModel.photoList.collectAsState()
+    val exportState by exportViewModel.exportState.collectAsState()
 
     var showBottomSheet by remember { mutableStateOf(false) }
     var isNavigatingToJournal by rememberSaveable { mutableStateOf(false) }  // Guard survives recomposition
@@ -112,6 +123,26 @@ fun PhotoDetailScreen(
             onNavigateBack()
         } else {
             Log.d("PhotoDetail", "Delete check: Photo ${viewModel.currentPhotoId.value} found in list of ${photoList.size} photos")
+        }
+    }
+
+    // Handle export state - show share dialog when export succeeds
+    LaunchedEffect(exportState) {
+        if (exportState is ExportState.Success) {
+            val fileUri = (exportState as ExportState.Success).fileUri
+            Log.d("PhotoDetail", "Export succeeded, launching share intent for URI: $fileUri")
+
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "image/jpeg"
+                putExtra(Intent.EXTRA_STREAM, fileUri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+
+            context.startActivity(Intent.createChooser(shareIntent, "Share Photo"))
+            exportViewModel.resetExportState()
+        } else if (exportState is ExportState.Error) {
+            Log.e("PhotoDetail", "Export failed: ${(exportState as ExportState.Error).message}")
+            // Error is handled in the PhotoInfoBottomSheet
         }
     }
 
@@ -182,13 +213,20 @@ fun PhotoDetailScreen(
 
     // Bottom sheet with photo info and actions
     if (showBottomSheet && currentPhoto != null) {
+        val sheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = false
+        )
+
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
-            modifier = Modifier.fillMaxHeight(0.6f)
+            sheetState = sheetState,
+            modifier = Modifier.fillMaxWidth()
         ) {
             PhotoInfoBottomSheet(
                 photo = currentPhoto!!,
                 journal = currentJournal,
+                exportState = exportState,
+                contextType = contextType,
                 onEditJournal = {
                     // Guard against navigation loop - only navigate once
                     if (!isNavigatingToJournal) {
@@ -199,11 +237,26 @@ fun PhotoDetailScreen(
                         Log.d("PhotoDetail", "Edit journal clicked but ALREADY navigating - ignoring")
                     }
                 },
+                onExportPhoto = {
+                    Log.d("PhotoDetail", "Export photo clicked for ID: ${currentPhoto!!.id}")
+                    exportViewModel.exportPhotoWithJournal(currentPhoto!!.id)
+                },
                 onDeletePhoto = {
                     Log.d("PhotoDetail", "Delete photo clicked")
                     viewModel.deleteCurrentPhoto()
                     // Don't update showBottomSheet - navigation will dismiss it automatically
                     onNavigateBack()
+                },
+                onUpdateCity = { photoId, newCity ->
+                    Log.d("PhotoDetail", "Update city clicked for photo ID: $photoId, new city: $newCity")
+                    viewModel.updatePhotoCity(photoId, newCity)
+
+                    // If viewing photos filtered by city, navigate back since grouping changed
+                    if (contextType == "city") {
+                        Log.d("PhotoDetail", "City changed while filtered by city - navigating back to gallery")
+                        showBottomSheet = false
+                        onNavigateBack()
+                    }
                 }
             )
         }
@@ -271,10 +324,18 @@ private fun ZoomablePhotoView(
 private fun PhotoInfoBottomSheet(
     photo: com.example.travellog.data.entities.PhotoEntity,
     journal: com.example.travellog.data.entities.JournalEntryEntity?,
+    exportState: ExportState,
+    contextType: String,
     onEditJournal: () -> Unit,
-    onDeletePhoto: () -> Unit
+    onExportPhoto: () -> Unit,
+    onDeletePhoto: () -> Unit,
+    onUpdateCity: (Long, String) -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy • h:mm a", Locale.getDefault()) }
+    val isExporting = exportState is ExportState.Loading
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showEditLocationDialog by remember { mutableStateOf(false) }
+    var editedCity by remember(photo.id) { mutableStateOf(photo.cityName.trim()) }
 
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
@@ -284,11 +345,28 @@ private fun PhotoInfoBottomSheet(
         // Location info
         item {
             Column {
-                Text(
-                    text = "${photo.cityName.trim()}, ${photo.stateCode}",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "${photo.cityName.trim()}, ${photo.stateCode}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = { showEditLocationDialog = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit location",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
                 Text(
                     text = photo.stateName,
                     style = MaterialTheme.typography.bodyMedium,
@@ -344,39 +422,95 @@ private fun PhotoInfoBottomSheet(
             }
         }
 
-        // Edit journal button
+        // Action buttons row (icon-only with bubble styling)
         item {
-            Button(
-                onClick = onEditJournal,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = null
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(if (journal != null) "Edit Journal Entry" else "Add Journal Entry")
+                // Edit Journal button
+                IconButton(
+                    onClick = onEditJournal,
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = CircleShape
+                        )
+                        .size(56.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = if (journal != null) "Edit Journal Entry" else "Add Journal Entry",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                // Share Photo button
+                IconButton(
+                    onClick = onExportPhoto,
+                    enabled = !isExporting,
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = CircleShape
+                        )
+                        .size(56.dp)
+                ) {
+                    if (isExporting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share Photo with Journal",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                // Delete button
+                IconButton(
+                    onClick = { showDeleteConfirmation = true },
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.error,
+                            shape = CircleShape
+                        )
+                        .size(56.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Photo",
+                        tint = MaterialTheme.colorScheme.errorContainer,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
 
-        // Delete photo button
-        item {
-            OutlinedButton(
-                onClick = onDeletePhoto,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = null
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Delete Photo")
+        // Export error message
+        if (exportState is ExportState.Error) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Text(
+                        text = exportState.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             }
         }
 
@@ -384,5 +518,86 @@ private fun PhotoInfoBottomSheet(
         item {
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    // Edit location dialog
+    if (showEditLocationDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditLocationDialog = false },
+            title = { Text("Edit Location") },
+            text = {
+                Column {
+                    Text(
+                        text = "Update the city/town name:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    OutlinedTextField(
+                        value = editedCity,
+                        onValueChange = { editedCity = it },
+                        label = { Text("City/Town") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        text = "State: ${photo.stateName}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+
+                    // Warning if in city-filtered context
+                    if (contextType == "city") {
+                        Text(
+                            text = "Note: Changing the city will return you to the gallery.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onUpdateCity(photo.id, editedCity.trim())
+                        showEditLocationDialog = false
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditLocationDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Delete confirmation dialog
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete Photo?") },
+            text = {
+                Text("Are you sure you want to delete this photo? This action cannot be undone.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmation = false
+                        onDeletePhoto()
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

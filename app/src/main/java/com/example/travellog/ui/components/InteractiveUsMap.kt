@@ -39,18 +39,14 @@ import kotlinx.coroutines.launch
  *
  * Shows travel progress through color-coded state overlays:
  * - 0 photos: gray (base map)
- * - 1-5 photos: light green
- * - 6-15 photos: medium green
- * - 16+ photos: dark green
+ * - 1-10 photos: light green
+ * - 11-25 photos: medium green
+ * - 26+ photos: dark green
  *
  * @param states List of US states with photo counts
  * @param onStateClick Callback when a state is selected from the list
  * @param modifier Optional modifier
  */
-// Zoom scale constants - consistent for both portrait and landscape
-private const val MIN_SCALE = 1f
-private const val MAX_SCALE = 3f
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InteractiveUsMap(
@@ -65,21 +61,48 @@ fun InteractiveUsMap(
     var showStateList by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
+    // Calculate dynamic min scale based on screen aspect ratio
+    // In landscape, allow zooming out to fit full map including Alaska/Hawaii
+    val screenWidth = configuration.screenWidthDp.toFloat()
+    val screenHeight = configuration.screenHeightDp.toFloat()
+    val screenAspectRatio = screenWidth / screenHeight
+
+    val minScale = remember(screenAspectRatio) {
+        if (screenAspectRatio > 1.5f) {
+            // Landscape mode - allow zooming out more to fit full map
+            0.5f
+        } else {
+            // Portrait mode - normal zoom
+            1f
+        }
+    }
+    val maxScale = 3f
+
     // Zoom and pan state - use Offset for pan to update together
-    var scale by remember { mutableStateOf(MIN_SCALE) }
+    var scale by remember { mutableStateOf(minScale) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+
+    // Auto-adjust zoom when orientation changes to landscape
+    LaunchedEffect(screenAspectRatio, minScale) {
+        if (screenAspectRatio > 1.5f && scale > minScale) {
+            // Auto-zoom out in landscape to show full map
+            Log.d("MapZoom", "Landscape detected - adjusting scale from $scale to $minScale")
+            scale = minScale
+            offset = Offset.Zero
+        }
+    }
 
     // Reset function with animation
     fun resetZoom() {
         Log.d("MapZoom", "Reset zoom called: currentScale=$scale, offset=$offset")
         scope.launch {
-            // Animate scale back to 1
+            // Animate scale back to minScale
             val scaleAnimatable = Animatable(scale)
             val offsetXAnimatable = Animatable(offset.x)
             val offsetYAnimatable = Animatable(offset.y)
 
             launch {
-                scaleAnimatable.animateTo(MIN_SCALE, spring())
+                scaleAnimatable.animateTo(minScale, spring())
                 scale = scaleAnimatable.value
                 Log.d("MapZoom", "Reset zoom complete: scale=$scale")
             }
@@ -93,9 +116,9 @@ fun InteractiveUsMap(
 
     // Nature theme colors for photo count overlays
     // Brighter colors to account for gray base map when using ColorFilter tinting
-    val lightGreen = Color(0xFFB2DFAF)   // 1-5 photos (brighter for visibility over gray)
-    val mediumGreen = Color(0xFF7CB877)  // 6-15 photos (brighter for visibility over gray)
-    val darkGreen = Color(0xFF4A7C3A)    // 16+ photos (slightly lighter than original #2D5016)
+    val lightGreen = Color(0xFFB2DFAF)   // 1-10 photos (brighter for visibility over gray)
+    val mediumGreen = Color(0xFF7CB877)  // 11-25 photos (brighter for visibility over gray)
+    val darkGreen = Color(0xFF4A7C3A)    // 26+ photos (slightly lighter than original #2D5016)
 
     // Log states with photos on first composition
     LaunchedEffect(states) {
@@ -106,8 +129,8 @@ fun InteractiveUsMap(
         Log.d("InteractiveUsMap", "States with photos: ${statesWithPhotos.size}")
         statesWithPhotos.forEach { state ->
             val color = when {
-                state.photoCount in 1..5 -> "Light Green"
-                state.photoCount in 6..15 -> "Medium Green"
+                state.photoCount in 1..10 -> "Light Green"
+                state.photoCount in 11..25 -> "Medium Green"
                 else -> "Dark Green"
             }
             Log.d("InteractiveUsMap", "  ${state.code} (${state.name}): ${state.photoCount} photos → $color")
@@ -138,13 +161,13 @@ fun InteractiveUsMap(
                         scale = scale,
                         offset = offset,
                         onScaleChange = { newScale ->
-                            scale = newScale.coerceIn(MIN_SCALE, MAX_SCALE)
+                            scale = newScale.coerceIn(minScale, maxScale)
                         },
                         onOffsetChange = { newOffset ->
                             offset = newOffset
                         },
                         onDoubleTap = {
-                            val targetScale = if (scale > 1.5f) MIN_SCALE else 2f
+                            val targetScale = if (scale > 1.5f) minScale else 2f
                             Log.d("MapZoom", "Double-tap zoom: currentScale=$scale, targetScale=$targetScale")
                             scope.launch {
                                 val scaleAnim = Animatable(scale)
@@ -152,8 +175,8 @@ fun InteractiveUsMap(
                                 scale = scaleAnim.value
                             }
                         },
-                        minScale = MIN_SCALE,
-                        maxScale = MAX_SCALE,
+                        minScale = minScale,
+                        maxScale = maxScale,
                         modifier = Modifier
                             .fillMaxWidth(0.95f)
                             .aspectRatio(1.5f)
@@ -161,7 +184,7 @@ fun InteractiveUsMap(
                 }
 
                 // Reset zoom button - top right (outside map content)
-                if (scale > MIN_SCALE || offset != Offset.Zero) {
+                if (scale > minScale || offset != Offset.Zero) {
                     IconButton(
                         onClick = { resetZoom() },
                         modifier = Modifier
@@ -220,9 +243,9 @@ fun InteractiveUsMap(
                     horizontalAlignment = Alignment.Start
                 ) {
                     LegendItemVertical(color = Color(0xFF9E9E9E), label = "No photos")
-                    LegendItemVertical(color = lightGreen, label = "1-5")
-                    LegendItemVertical(color = mediumGreen, label = "6-15")
-                    LegendItemVertical(color = darkGreen, label = "16+")
+                    LegendItemVertical(color = lightGreen, label = "1-10")
+                    LegendItemVertical(color = mediumGreen, label = "11-25")
+                    LegendItemVertical(color = darkGreen, label = "26+")
                 }
             }
         }
@@ -250,13 +273,13 @@ fun InteractiveUsMap(
                         scale = scale,
                         offset = offset,
                         onScaleChange = { newScale ->
-                            scale = newScale.coerceIn(MIN_SCALE, MAX_SCALE)
+                            scale = newScale.coerceIn(minScale, maxScale)
                         },
                         onOffsetChange = { newOffset ->
                             offset = newOffset
                         },
                         onDoubleTap = {
-                            val targetScale = if (scale > 1.5f) MIN_SCALE else 2f
+                            val targetScale = if (scale > 1.5f) minScale else 2f
                             Log.d("MapZoom", "Double-tap zoom: currentScale=$scale, targetScale=$targetScale")
                             scope.launch {
                                 val scaleAnim = Animatable(scale)
@@ -264,8 +287,8 @@ fun InteractiveUsMap(
                                 scale = scaleAnim.value
                             }
                         },
-                        minScale = MIN_SCALE,
-                        maxScale = MAX_SCALE,
+                        minScale = minScale,
+                        maxScale = maxScale,
                         modifier = Modifier
                             .fillMaxWidth(0.95f)
                             .aspectRatio(1.5f)
@@ -273,7 +296,7 @@ fun InteractiveUsMap(
                 }
 
                 // Reset zoom button - top left in portrait
-                if (scale > MIN_SCALE || offset != Offset.Zero) {
+                if (scale > minScale || offset != Offset.Zero) {
                     IconButton(
                         onClick = { resetZoom() },
                         modifier = Modifier
@@ -321,9 +344,9 @@ fun InteractiveUsMap(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 LegendItem(color = Color(0xFF9E9E9E), label = "No photos")
-                LegendItem(color = lightGreen, label = "1-5")
-                LegendItem(color = mediumGreen, label = "6-15")
-                LegendItem(color = darkGreen, label = "16+")
+                LegendItem(color = lightGreen, label = "1-10")
+                LegendItem(color = mediumGreen, label = "11-25")
+                LegendItem(color = darkGreen, label = "26+")
             }
         }
     }
@@ -467,8 +490,8 @@ fun InteractiveUsMap(
                                     }
 
                                     val badgeColor = when {
-                                        state.photoCount in 1..5 -> lightGreen
-                                        state.photoCount in 6..15 -> mediumGreen
+                                        state.photoCount in 1..10 -> lightGreen
+                                        state.photoCount in 11..25 -> mediumGreen
                                         else -> darkGreen
                                     }
                                     Surface(

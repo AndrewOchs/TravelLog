@@ -30,6 +30,9 @@ interface PhotoDao {
     @Query("DELETE FROM photos WHERE id = :photoId")
     suspend fun deleteById(photoId: Long)
 
+    @Query("UPDATE photos SET city_name = :newCity WHERE id = :photoId")
+    suspend fun updatePhotoCity(photoId: Long, newCity: String)
+
     @Query("SELECT * FROM photos ORDER BY captured_date DESC")
     fun getAll(): Flow<List<PhotoEntity>>
 

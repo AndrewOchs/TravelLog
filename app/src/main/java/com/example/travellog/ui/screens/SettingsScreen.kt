@@ -2,12 +2,8 @@ package com.example.travellog.ui.screens
 
 import android.content.Intent
 import android.util.Log
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,17 +15,11 @@ import androidx.compose.ui.Alignment
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.rememberAsyncImagePainter
 import com.example.travellog.data.preferences.ThemeMode
-import com.example.travellog.ui.viewmodel.ExportState
-import com.example.travellog.ui.viewmodel.ExportViewModel
 import com.example.travellog.ui.viewmodel.SettingsViewModel
 
 private const val TAG = "SettingsScreen"
@@ -39,8 +29,7 @@ private const val TAG = "SettingsScreen"
  *
  * Sections:
  * - Appearance: Theme, dark mode, display preferences
- * - Data & Storage: Storage usage, photo count, cache management
- * - Export & Sharing: Export data, share functionality (placeholder)
+ * - Data & Storage: Storage usage, photo count, cache management, backup (coming soon)
  * - About: App version, credits, licenses
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +43,6 @@ fun SettingsScreen(
     val currentTheme by viewModel.currentTheme.collectAsState()
 
     var showThemeDialog by remember { mutableStateOf(false) }
-    var showExportDialog by remember { mutableStateOf(false) }
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var showPrivacyPolicyDialog by remember { mutableStateOf(false) }
     var showLicensesDialog by remember { mutableStateOf(false) }
@@ -123,26 +111,12 @@ fun SettingsScreen(
                     subtitle = if (cacheCleared) "Cache cleared!" else "Free up space",
                     onClick = { showClearCacheDialog = true }
                 )
-            }
-
-            Divider(
-                modifier = Modifier.padding(vertical = 8.dp),
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
-
-            // Export & Sharing Section
-            SettingsSection(title = "Export & Sharing") {
-                SettingsItem(
-                    icon = Icons.Default.Share,
-                    title = "Export Photo",
-                    subtitle = "Share photo with journal overlay",
-                    onClick = { showExportDialog = true }
-                )
                 SettingsItem(
                     icon = Icons.Default.CloudUpload,
                     title = "Backup & Sync",
-                    subtitle = "Cloud backup options",
-                    onClick = { /* TODO: Implement backup */ }
+                    subtitle = "Coming Soon",
+                    onClick = { /* Planned for future update */ },
+                    enabled = false
                 )
             }
 
@@ -208,13 +182,6 @@ fun SettingsScreen(
         )
     }
 
-    // Export Photo Dialog
-    if (showExportDialog) {
-        ExportPhotoDialog(
-            onDismiss = { showExportDialog = false }
-        )
-    }
-
     // Clear Cache Confirmation Dialog
     if (showClearCacheDialog) {
         ClearCacheDialog(
@@ -274,10 +241,12 @@ private fun SettingsItem(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     Surface(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
@@ -293,7 +262,10 @@ private fun SettingsItem(
             Icon(
                 imageVector = icon,
                 contentDescription = title,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = if (enabled)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                 modifier = Modifier.size(24.dp)
             )
 
@@ -305,19 +277,28 @@ private fun SettingsItem(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (enabled)
+                        MaterialTheme.colorScheme.onSurface
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (enabled)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                 )
             }
 
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = "Navigate",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (enabled)
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -496,268 +477,6 @@ private fun ThemeOption(
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Selected",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-    }
-}
-
-/**
- * Dialog for selecting and exporting a photo with journal overlay.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ExportPhotoDialog(
-    onDismiss: () -> Unit
-) {
-    val exportViewModel: ExportViewModel = hiltViewModel()
-    val settingsViewModel: SettingsViewModel = hiltViewModel()
-    val photos by settingsViewModel.allPhotos.collectAsState()
-    val exportState by exportViewModel.exportState.collectAsState()
-    val context = LocalContext.current
-
-    var selectedPhotoId by remember { mutableStateOf<Long?>(null) }
-
-    // Handle export success - share the file
-    LaunchedEffect(exportState) {
-        if (exportState is ExportState.Success) {
-            Log.d(TAG, "Export success! Creating share intent")
-            val uri = (exportState as ExportState.Success).fileUri
-            Log.d(TAG, "Share URI: $uri")
-
-            // Create share intent with proper permissions
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "image/jpeg"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                // CRITICAL: Grant read permission so receiving apps can access the file
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-
-            // Verify intent configuration
-            Log.d(TAG, "Share Intent verification:")
-            Log.d(TAG, "  Type: ${shareIntent.type}")
-            Log.d(TAG, "  URI: ${shareIntent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)}")
-            Log.d(TAG, "  Flags: ${shareIntent.flags} (includes FLAG_GRANT_READ_URI_PERMISSION: ${shareIntent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0})")
-
-            // Create chooser with proper flags
-            val chooserIntent = Intent.createChooser(shareIntent, "Share Photo").apply {
-                // Add NEW_TASK flag when starting from non-Activity context
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-
-            Log.d(TAG, "Launching share chooser with permissions")
-            try {
-                context.startActivity(chooserIntent)
-                Log.d(TAG, "Share chooser launched successfully")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to launch share chooser", e)
-            }
-
-            exportViewModel.resetExportState()
-            onDismiss()
-        }
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        modifier = Modifier.fillMaxHeight(0.85f)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
-        ) {
-            // Header
-            Text(
-                text = "Export Photo with Journal",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Text(
-                text = "Select a photo to export with location and journal overlay",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            when (exportState) {
-                is ExportState.Loading -> {
-                    // Loading state
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            CircularProgressIndicator()
-                            Text(
-                                text = "Generating shareable image...",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-
-                is ExportState.Error -> {
-                    // Error state
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Error,
-                                contentDescription = "Error",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Text(
-                                text = (exportState as ExportState.Error).message,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Button(onClick = { exportViewModel.resetExportState() }) {
-                                Text("Try Again")
-                            }
-                        }
-                    }
-                }
-
-                else -> {
-                    // Photo selection list
-                    if (photos.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No photos available to export",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(photos) { photo ->
-                                PhotoExportItem(
-                                    photo = photo,
-                                    isSelected = selectedPhotoId == photo.id,
-                                    onClick = { selectedPhotoId = photo.id }
-                                )
-                            }
-                            item {
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
-                        }
-
-                        // Export button
-                        Button(
-                            onClick = {
-                                selectedPhotoId?.let { photoId ->
-                                    exportViewModel.exportPhotoWithJournal(photoId)
-                                }
-                            },
-                            enabled = selectedPhotoId != null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Export & Share")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Individual photo item for export selection.
- */
-@Composable
-private fun PhotoExportItem(
-    photo: com.example.travellog.data.entities.PhotoEntity,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        color = if (isSelected)
-            MaterialTheme.colorScheme.primaryContainer
-        else
-            MaterialTheme.colorScheme.surfaceVariant
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Thumbnail
-            Image(
-                painter = rememberAsyncImagePainter(photo.uri),
-                contentDescription = "${photo.stateName} photo",
-                modifier = Modifier
-                    .size(60.dp),
-                contentScale = ContentScale.Crop
-            )
-
-            // Photo info
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = "${photo.stateName} - ${photo.cityName}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (isSelected)
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    else
-                        MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.US)
-                        .format(java.util.Date(photo.capturedDate)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isSelected)
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Selected",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)

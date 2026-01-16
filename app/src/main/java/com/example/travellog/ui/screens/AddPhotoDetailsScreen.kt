@@ -24,6 +24,8 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.travellog.data.models.allUsStates
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.Calendar
+import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -280,8 +282,22 @@ fun AddPhotoDetailsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        datePickerState.selectedDateMillis?.let {
-                            selectedDate = it
+                        datePickerState.selectedDateMillis?.let { utcMillis ->
+                            // DatePicker returns UTC midnight - convert to local timezone
+                            // and preserve the time-of-day from the original timestamp
+                            val utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+                                timeInMillis = utcMillis
+                            }
+
+                            val localCalendar = Calendar.getInstance().apply {
+                                timeInMillis = selectedDate  // Start with original timestamp (has current time)
+                                // Replace only the date portion with the selected date
+                                set(Calendar.YEAR, utcCalendar.get(Calendar.YEAR))
+                                set(Calendar.MONTH, utcCalendar.get(Calendar.MONTH))
+                                set(Calendar.DAY_OF_MONTH, utcCalendar.get(Calendar.DAY_OF_MONTH))
+                            }
+
+                            selectedDate = localCalendar.timeInMillis
                         }
                         showDatePicker = false
                     }

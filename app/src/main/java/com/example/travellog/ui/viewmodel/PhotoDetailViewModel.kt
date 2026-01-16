@@ -158,6 +158,18 @@ class PhotoDetailViewModel @Inject constructor(
     }
 
     /**
+     * Update the city name for a photo.
+     * @param photoId ID of the photo to update
+     * @param newCity New city name
+     */
+    fun updatePhotoCity(photoId: Long, newCity: String) {
+        viewModelScope.launch {
+            Log.d("PhotoDetailVM", "Updating city for photo $photoId to: $newCity")
+            photoRepository.updatePhotoCity(photoId, newCity)
+        }
+    }
+
+    /**
      * Get current photo index in the list.
      * @return Index of current photo, or -1 if not found
      */

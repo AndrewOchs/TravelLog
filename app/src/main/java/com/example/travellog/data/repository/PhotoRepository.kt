@@ -29,6 +29,7 @@ interface PhotoRepository {
     fun getStatePhotoCounts(): Flow<List<StatePhotoCount>>
     fun getPhotosByState(stateCode: String): Flow<List<PhotoEntity>>
     suspend fun deletePhoto(photoId: Long)
+    suspend fun updatePhotoCity(photoId: Long, newCity: String)
 }
 
 @Singleton
@@ -127,5 +128,10 @@ class PhotoRepositoryImpl @Inject constructor(
 
     override suspend fun deletePhoto(photoId: Long) = withContext(Dispatchers.IO) {
         photoDao.deleteById(photoId)
+    }
+
+    override suspend fun updatePhotoCity(photoId: Long, newCity: String) = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Updating photo $photoId city to: $newCity")
+        photoDao.updatePhotoCity(photoId, newCity)
     }
 }
