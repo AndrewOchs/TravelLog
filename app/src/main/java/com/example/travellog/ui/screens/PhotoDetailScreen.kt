@@ -1,5 +1,7 @@
 package com.example.travellog.ui.screens
 
+import android.content.Intent
+import android.graphics.Bitmap
 import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -12,11 +14,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,12 +31,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.travellog.ui.viewmodel.PhotoDetailViewModel
@@ -40,8 +49,6 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
-import android.content.Intent
-import android.net.Uri
 
 /**
  * Full-screen photo detail screen with swipe navigation and bottom sheet.
@@ -77,7 +84,17 @@ fun PhotoDetailScreen(
 
     var showBottomSheet by remember { mutableStateOf(false) }
     var isNavigatingToJournal by rememberSaveable { mutableStateOf(false) }  // Guard survives recomposition
-    val pagerState = rememberPagerState(pageCount = { photoList.size })
+
+    // Save current page index across configuration changes (like rotation)
+    var savedPageIndex by rememberSaveable { mutableStateOf(-1) }
+    val pagerState = rememberPagerState(
+        pageCount = { photoList.size }
+    )
+
+    // Export preview state
+    var showExportPreview by remember { mutableStateOf(false) }
+    var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val scope = rememberCoroutineScope()
 
     // Reset navigation guard when returning to this screen or photo changes
     LaunchedEffect(currentPhoto?.id) {
@@ -94,20 +111,32 @@ fun PhotoDetailScreen(
     // Sync pager with current photo when photo list loads
     LaunchedEffect(photoList, photoId) {
         if (photoList.isNotEmpty()) {
-            val index = photoList.indexOfFirst { it.id == photoId }
-            Log.d("PhotoDetailScreen", "Photo list changed. Size=${photoList.size}, Looking for photoId=$photoId, found at index=$index, currentPage=${pagerState.currentPage}")
-            if (index >= 0 && index != pagerState.currentPage) {
-                Log.d("PhotoDetailScreen", "Scrolling pager to page $index")
-                pagerState.scrollToPage(index)
+            // After rotation, restore to saved page if available
+            val targetIndex = if (savedPageIndex >= 0 && savedPageIndex < photoList.size) {
+                Log.d("PhotoDetailScreen", "Restoring saved page index: $savedPageIndex after rotation")
+                savedPageIndex
+            } else {
+                // Normal case: find the photo by ID
+                val index = photoList.indexOfFirst { it.id == photoId }
+                Log.d("PhotoDetailScreen", "Photo list changed. Size=${photoList.size}, Looking for photoId=$photoId, found at index=$index, currentPage=${pagerState.currentPage}")
+                index
+            }
+
+            if (targetIndex >= 0 && targetIndex != pagerState.currentPage) {
+                Log.d("PhotoDetailScreen", "Scrolling pager to page $targetIndex")
+                pagerState.scrollToPage(targetIndex)
             }
         } else {
             Log.d("PhotoDetailScreen", "Photo list is EMPTY")
         }
     }
 
-    // Update current photo when pager page changes
+    // Update current photo when pager page changes and save page index
     LaunchedEffect(pagerState.currentPage) {
         if (photoList.isNotEmpty() && pagerState.currentPage < photoList.size) {
+            // Save current page for rotation persistence
+            savedPageIndex = pagerState.currentPage
+
             val newPhotoId = photoList[pagerState.currentPage].id
             Log.d("PhotoDetailScreen", "Pager page changed to ${pagerState.currentPage}, newPhotoId=$newPhotoId, currentPhotoId=${viewModel.currentPhotoId.value}")
             if (newPhotoId != viewModel.currentPhotoId.value) {
@@ -133,7 +162,7 @@ fun PhotoDetailScreen(
             Log.d("PhotoDetail", "Export succeeded, launching share intent for URI: $fileUri")
 
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "image/jpeg"
+                type = "image/png"
                 putExtra(Intent.EXTRA_STREAM, fileUri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
@@ -209,6 +238,22 @@ fun PhotoDetailScreen(
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             )
         }
+
+        // Three-dot menu FAB for better discoverability
+        FloatingActionButton(
+            onClick = { showBottomSheet = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp),
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            elevation = FloatingActionButtonDefaults.elevation(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "Photo options",
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
     }
 
     // Bottom sheet with photo info and actions
@@ -239,7 +284,16 @@ fun PhotoDetailScreen(
                 },
                 onExportPhoto = {
                     Log.d("PhotoDetail", "Export photo clicked for ID: ${currentPhoto!!.id}")
-                    exportViewModel.exportPhotoWithJournal(currentPhoto!!.id)
+                    // Generate preview first
+                    scope.launch {
+                        val bitmap = exportViewModel.generateExportPreview(currentPhoto!!.id)
+                        if (bitmap != null) {
+                            previewBitmap = bitmap
+                            showExportPreview = true
+                        } else {
+                            Log.e("PhotoDetail", "Failed to generate preview")
+                        }
+                    }
                 },
                 onDeletePhoto = {
                     Log.d("PhotoDetail", "Delete photo clicked")
@@ -260,6 +314,25 @@ fun PhotoDetailScreen(
                 }
             )
         }
+    }
+
+    // Show export preview dialog
+    if (showExportPreview && previewBitmap != null) {
+        ExportPreviewDialog(
+            bitmap = previewBitmap!!,
+            onDismiss = {
+                showExportPreview = false
+                previewBitmap?.recycle()
+                previewBitmap = null
+            },
+            onConfirm = { bitmap ->
+                Log.d("PhotoDetail", "Preview confirmed, saving and sharing")
+                exportViewModel.saveAndShareBitmap(bitmap)
+                showExportPreview = false
+                // Don't recycle bitmap yet - it's being saved
+                previewBitmap = null
+            }
+        )
     }
 }
 
@@ -599,5 +672,105 @@ private fun PhotoInfoBottomSheet(
                 }
             }
         )
+    }
+}
+
+/**
+ * Preview dialog for export - shows the Polaroid before sharing.
+ */
+@Composable
+fun ExportPreviewDialog(
+    bitmap: Bitmap,
+    onDismiss: () -> Unit,
+    onConfirm: (Bitmap) -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.95f)),
+            color = Color.Transparent
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Preview Export",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color.White
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color.White
+                        )
+                    }
+                }
+
+                // Image preview (scrollable if needed)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Export preview",
+                        modifier = Modifier.fillMaxWidth(),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+
+                // Action buttons
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color.White
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            Color.White.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        onClick = { onConfirm(bitmap) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Share")
+                    }
+                }
+            }
+        }
     }
 }

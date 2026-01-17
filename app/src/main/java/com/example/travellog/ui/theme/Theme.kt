@@ -95,7 +95,7 @@ fun TravelLogTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = AppTypography,  // Custom app-wide typography
         shapes = TravelLogShapes,
         content = content
     )

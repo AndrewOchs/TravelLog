@@ -140,7 +140,6 @@ fun StateDetailScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PhotoGridItem(
     photoInfo: com.example.travellog.data.models.PhotoWithJournalInfo,
@@ -148,7 +147,6 @@ private fun PhotoGridItem(
     onLongPress: (com.example.travellog.data.entities.PhotoEntity) -> Unit
 ) {
     val photo = photoInfo.photo
-    var showActionSheet by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -157,7 +155,7 @@ private fun PhotoGridItem(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { onPhotoClick(photo) },
-                    onLongPress = { showActionSheet = true }
+                    onLongPress = { onPhotoClick(photo) }  // Same as tap - show modern bottom sheet
                 )
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -191,61 +189,6 @@ private fun PhotoGridItem(
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(8.dp)
                 )
-            }
-        }
-    }
-
-    // Action bottom sheet for long-press
-    if (showActionSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showActionSheet = false }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Add/Edit Journal Entry button
-                Button(
-                    onClick = {
-                        showActionSheet = false
-                        onLongPress(photo)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (photoInfo.hasJournal) "Edit Journal Entry" else "Add Journal Entry")
-                }
-
-                // Delete Photo button
-                OutlinedButton(
-                    onClick = {
-                        showActionSheet = false
-                        // TODO: Implement delete functionality
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Delete Photo")
-                }
-
-                // Bottom padding
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
