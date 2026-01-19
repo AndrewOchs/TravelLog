@@ -10,7 +10,18 @@
       "Bash(./gradlew build:*)",
       "Bash(find:*)",
       "Bash(./gradlew clean:*)",
-      "Bash(cmd /c \"gradlew.bat assembleDebug\")"
+      "Bash(cmd /c \"gradlew.bat assembleDebug\")",
+      "Bash(./gradlew.bat clean)",
+      "Bash(where:*)",
+      "Bash(if [ -d \"/c/Program Files/Android/Android Studio/jbr\" ])",
+      "Bash(then echo \"Found at: /c/Program Files/Android/Android Studio/jbr\")",
+      "Bash(elif [ -d \"/c/Program Files \\(x86\\)/Android/Android Studio/jbr\" ])",
+      "Bash(then echo \"Found at: /c/Program Files \\(x86\\)/Android/Android Studio/jbr\")",
+      "Bash(else echo \"JDK not found in standard Android Studio locations\")",
+      "Bash(fi)",
+      "Bash(export JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\")",
+      "Bash(./gradlew.bat build:*)",
+      "Bash(./gradlew.bat assembleDebug)"
     ]
   }
 }

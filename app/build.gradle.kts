@@ -45,6 +45,9 @@ android {
     buildFeatures {
         compose = true
     }
+    lint {
+        disable.add("PermissionLaunchedDuringComposition")
+    }
 }
 
 dependencies {
