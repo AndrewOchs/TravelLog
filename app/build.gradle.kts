@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.travellog"
+    namespace = "com.example.wanderstate"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.travellog"
+        applicationId = "com.example.wanderstate"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
