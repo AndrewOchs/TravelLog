@@ -9,7 +9,8 @@
       "Bash(grep:*)",
       "Bash(./gradlew build:*)",
       "Bash(find:*)",
-      "Bash(./gradlew clean:*)"
+      "Bash(./gradlew clean:*)",
+      "Bash(cmd /c \"gradlew.bat assembleDebug\")"
     ]
   }
 }
