@@ -1,0 +1,85 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="50dp"
+    android:height="28dp"
+    android:viewportWidth="50"
+    android:viewportHeight="28"
+    android:tint="?attr/colorControlNormal">
+    <!-- Mirrored botanical flourish with detailed leaf shapes pointing left (toward title) -->
+
+    <!-- Main curved branch/stem (mirrored) -->
+    <path
+        android:strokeWidth="2"
+        android:pathData="M48,14 Q38,14 20,14"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Leaf 1 - Upper right (teardrop shape, mirrored) -->
+    <!-- Leaf outline -->
+    <path
+        android:strokeWidth="2"
+        android:pathData="M40,14 Q37,8 32,6 Q34,10 37,14 Q40,14 40,14"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"/>
+    <!-- Center vein -->
+    <path
+        android:strokeWidth="1.5"
+        android:pathData="M40,14 Q36.5,9 34,7"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Leaf 2 - Upper left (teardrop shape, mirrored) -->
+    <!-- Leaf outline -->
+    <path
+        android:strokeWidth="2"
+        android:pathData="M32,14 Q28,10 22,9 Q24,13 28,14.5 Q32,14 32,14"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"/>
+    <!-- Center vein -->
+    <path
+        android:strokeWidth="1.5"
+        android:pathData="M32,14 Q27.5,11 24,9.5"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Leaf 3 - Lower right (teardrop shape, mirrored) -->
+    <!-- Leaf outline -->
+    <path
+        android:strokeWidth="2"
+        android:pathData="M40,14 Q37,20 32,22 Q34,18 37,14 Q40,14 40,14"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"/>
+    <!-- Center vein -->
+    <path
+        android:strokeWidth="1.5"
+        android:pathData="M40,14 Q36.5,19 34,21"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Leaf 4 - Lower left (teardrop shape, mirrored) - NEW! -->
+    <!-- Leaf outline -->
+    <path
+        android:strokeWidth="2"
+        android:pathData="M32,14 Q28,18 22,19 Q24,15 28,13.5 Q32,14 32,14"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"/>
+    <!-- Center vein -->
+    <path
+        android:strokeWidth="1.5"
+        android:pathData="M32,14 Q27.5,17 24,18.5"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+</vector>
