@@ -24,7 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.wanderstate.R
+import com.andrewochs.wanderstate.R
 import com.example.wanderstate.ui.theme.StatsNumberStyle
 import com.example.wanderstate.ui.viewmodel.StateStats
 import com.example.wanderstate.ui.viewmodel.StatsViewModel
@@ -50,9 +50,18 @@ fun StatsScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Top app bar with centered title and compass accents - responsive
-        TopAppBar(
-            title = {
+        // Compact title section with centered title and compass accents
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 2.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 val compassColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
 
                 // Aggressive responsive sizing for small screens
@@ -121,20 +130,16 @@ fun StatsScreen(
                         modifier = Modifier.size(compassSize)
                     )
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                titleContentColor = MaterialTheme.colorScheme.primary
-            )
-        )
+            }
+        }
 
         // Scrollable content
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Hero Section - Circular Progress
             StatesProgressHero(
@@ -160,9 +165,6 @@ fun StatsScreen(
             if (stats.totalPhotos > 0) {
                 FunFactsSection(stats = stats)
             }
-
-            // Bottom spacing
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

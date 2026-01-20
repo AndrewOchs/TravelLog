@@ -6,7 +6,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.example.wanderstate.R
+import com.andrewochs.wanderstate.R
 
 // Define Poppins font family
 val PoppinsFontFamily = FontFamily(

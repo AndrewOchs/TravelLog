@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import com.caverock.androidsvg.SVG
-import com.example.wanderstate.R
+import com.andrewochs.wanderstate.R
 import com.example.wanderstate.data.models.UsState
 
 private const val TAG = "SvgUsMapRenderer"

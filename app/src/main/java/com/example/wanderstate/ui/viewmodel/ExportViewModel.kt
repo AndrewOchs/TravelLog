@@ -15,7 +15,7 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.wanderstate.R
+import com.andrewochs.wanderstate.R
 import com.example.wanderstate.data.dao.JournalEntryDao
 import com.example.wanderstate.data.dao.PhotoDao
 import com.example.wanderstate.data.entities.PhotoEntity

@@ -28,7 +28,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.wanderstate.R
+import com.andrewochs.wanderstate.R
 import com.example.wanderstate.data.models.UsState
 import kotlinx.coroutines.launch
 
