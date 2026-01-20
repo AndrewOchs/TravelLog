@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.andrewochs.wanderstate"
+    namespace = "com.example.wanderstate"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.andrewochs.wanderstate"
+        applicationId = "com.example.wanderstate"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

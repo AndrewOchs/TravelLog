@@ -23,7 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.andrewochs.wanderstate.R
+import com.example.wanderstate.R
 import androidx.core.content.FileProvider
 import com.example.wanderstate.data.models.allUsStates
 import com.example.wanderstate.ui.components.InteractiveUsMap

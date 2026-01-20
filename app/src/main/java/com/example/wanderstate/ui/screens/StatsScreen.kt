@@ -24,7 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.andrewochs.wanderstate.R
+import com.example.wanderstate.R
 import com.example.wanderstate.ui.theme.StatsNumberStyle
 import com.example.wanderstate.ui.viewmodel.StateStats
 import com.example.wanderstate.ui.viewmodel.StatsViewModel
